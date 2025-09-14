@@ -1,46 +1,32 @@
-from sklearn.model_selection import train_test_split 
-from sklearn.preprocessing import RobustScaler 
-from sklearn.compose import ColumnTransformer 
-from sklearn.preprocessing import OneHotEncoder 
-from sklearn.pipeline import Pipeline 
-from sklearn.preprocessing import RobustScaler 
-from sklearn.impute import SimpleImputer 
-from sklearn.base import BaseEstimator, TransformerMixin 
-from sklearn.linear_model import LogisticRegression 
-from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay 
-from sklearn.metrics import precision_score 
-from sklearn.metrics import recall_score 
-from sklearn.metrics import f1_score 
-from sklearn.metrics import RocCurveDisplay
-from sklearn.metrics import roc_auc_score
-from sklearn.metrics import average_precision_score
-from sklearn.metrics import PrecisionRecallDisplay
-
-import matplotlib.pyplot as plt 
 import pandas as pd
+from sklearn.impute import SimpleImputer
 
-#=========== Cargamos la base de datos ===============
-#df = pd.read_csv("/home/carlos/Documents/8vo/MID_MACHINE/Mid_Machine/WA_Fn-UseC_-Telco-Customer-Churn.csv")
-#Alessa
-df = pd.read_csv(r"C:\Users\Ale\Documents\Yachay\Sexto\Machine Learning\Machine-Learning\Mid_Machine\WA_Fn-UseC_-Telco-Customer-Churn.csv")
-#Aldrin
-#df = pd.read_csv("")
-#Brandon
-#df = pd.read_csv("")
+def clean_dt(df):
+    if "customerID" in df.columns:
+        df = df.drop(['customerID'], axis=1)
 
-#Eliminamos la columna Customer_ID 
-df = df.drop(['customerID'], axis=1)
-#Esta columna esta en strings
-df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors = 'coerce')
+    df['TotalCharges'] = pd.to_numeric(df['TotalCharges'], errors='coerce')
+    imputer = SimpleImputer(strategy='median')
+    df['TotalCharges'] = imputer.fit_transform(df[['TotalCharges']])
 
-#Vamos a imputar
-imputer = SimpleImputer(strategy='median')
-df['TotalCharges'] = imputer.fit_transform(df[['TotalCharges']])
+    colum = ['Partner', 'Dependents', 'PhoneService', 'PaperlessBilling', 'Churn']
+    for c in colum:
+        if c in df.columns:
+            df[c] = df[c].replace({'Yes': 1, 'No': 0})
 
-#Reemplazamos los Yes/No por 1, 0
-colum = ['Partner', 'Dependents', 'PhoneService', '' ]
-print(df.info())
-print(df.head())
-#Reemplazamos los Yes/No por 1, 0
-colum = ['Partner', 'Dependents', 'PhoneService', 'PaperlessBilling' ]
-df = df[colum].replace({'Yes': 1, 'No':0 })
+    return df
+
+def metric(df, column):
+    series = df[column]
+    if set(series.dropna().unique()) <= {0, 1}: 
+        count_1 = series.sum()
+        count_0 = len(series) - count_1
+        return pd.Series({
+            'Total': len(series),
+            '1s': int(count_1),
+            '0s': int(count_0),
+            'Porcentaje 1': round(count_1 / len(series) * 100, 2),
+            'Porcentaje 0': round(count_0 / len(series) * 100, 2)
+        })
+    else:
+        return series.describe()
