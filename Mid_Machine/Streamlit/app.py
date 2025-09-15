@@ -3,7 +3,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from EDA import clean_dt, metric, kpis_por_segmento
+from EDA import clean_dt, kpis_por_segmento
 
 # ==============================
 # CONFIGURACIÓN DE PÁGINA
@@ -154,6 +154,13 @@ with tab2:
     if "InternetService" in df_f.columns and "Churn" in df_f.columns:
         fig, ax = plt.subplots(figsize=(8, 5))
         sns.countplot(data=df_f, x="InternetService", hue="Churn", ax=ax)
+        ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha="right")
+        st.pyplot(fig)
+
+    st.subheader("Churn por PaymentMethod")
+    if "PaymentMethod" in df_f.columns and "Churn" in df_f.columns:
+        fig, ax = plt.subplots(figsize=(9, 5))
+        sns.countplot(data=df_f, x="PaymentMethod", hue="Churn", ax=ax)
         ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha="right")
         st.pyplot(fig)
 
