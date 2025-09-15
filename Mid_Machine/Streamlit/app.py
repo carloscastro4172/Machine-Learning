@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
-import seaborn as sns
+import altair as alt
 
 from EDA import clean_dt, kpis_por_segmento
 
@@ -24,7 +23,8 @@ df_raw = pd.read_csv(uploaded_file)
 df = clean_dt(df_raw.copy())
 
 st.subheader("Vista previa de los datos")
-st.dataframe(df.head())
+n_rows = st.slider("Número de filas a mostrar", min_value=5, max_value=len(df), value=5, step=5)
+st.dataframe(df.head(n_rows))
 
 # ==============================
 # SIDEBAR: FILTROS (afectan todo)
@@ -112,20 +112,35 @@ tab1, tab2, tab3, tab4 = st.tabs([" Distribuciones", " Comparativo", "Segmentaci
 # ---- Tab 1: Distribuciones (hist + box + scatter interactivo)
 with tab1:
     st.subheader("Distribución de variables numéricas")
-    for col in num_vars:
-        fig, ax = plt.subplots(figsize=(6, 4))
-        sns.histplot(df_f[col], kde=True, ax=ax, color="skyblue")
-        ax.set_title(f"Histograma: {col}")
-        st.pyplot(fig)
+    for i in range(0, len(num_vars), 2):
+        cols = st.columns(2)
+        for j, col in enumerate(num_vars[i:i+2]):
+            with cols[j]:
+                chart = alt.Chart(df_f).mark_bar(opacity=0.8, color="#1f77b4").encode(
+                    alt.X(col, bin=alt.Bin(maxbins=30), title=col),
+                    alt.Y('count()', title='Frecuencia'),
+                    tooltip=[col]
+                ).properties(height=300).configure_axis(
+                    labelColor="lightgray",
+                    titleColor="white"
+                ).interactive()
+                st.altair_chart(chart, use_container_width=True)
 
     st.subheader("Boxplots por categoría")
     x_cat = st.selectbox("Categoría para boxplots", [c for c in cat_vars if c in df_f.columns], index=([c for c in cat_vars if c in df_f.columns].index("Churn") if "Churn" in df_f.columns else 0))
-    for y_num in num_vars:
-        fig, ax = plt.subplots(figsize=(8, 5))
-        sns.boxplot(x=x_cat, y=y_num, data=df_f, ax=ax)
-        ax.set_title(f"{y_num} por {x_cat}")
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha="right", fontsize=9)
-        st.pyplot(fig)
+    for i in range(0, len(num_vars), 2):
+        cols = st.columns(2)
+        for j, y_num in enumerate(num_vars[i:i+2]):
+            with cols[j]:
+                chart = alt.Chart(df_f).mark_boxplot(color="#ff7f0e").encode(
+                    x=alt.X(x_cat, title=x_cat),
+                    y=alt.Y(y_num, title=y_num),
+                    color=x_cat
+                ).properties(height=300).configure_axis(
+                    labelColor="lightgray",
+                    titleColor="white"
+                )
+                st.altair_chart(chart, use_container_width=True)
 
     st.subheader("Scatterplot interactivo")
     if len(num_vars) >= 2:
@@ -133,44 +148,53 @@ with tab1:
         y_var = st.selectbox("Y (numérica)", num_vars, index=1, key="sc_y")
         hue_choices = ["Ninguno"] + [c for c in cat_vars if c in df_f.columns]
         hue_var = st.selectbox("Hue (categórica)", hue_choices, index=hue_choices.index("Churn") if "Churn" in hue_choices else 0)
-        fig, ax = plt.subplots(figsize=(7, 5))
-        if hue_var != "Ninguno":
-            sns.scatterplot(data=df_f, x=x_var, y=y_var, hue=hue_var, ax=ax, alpha=0.7)
-        else:
-            sns.scatterplot(data=df_f, x=x_var, y=y_var, ax=ax, alpha=0.7)
-        ax.set_title(f"{x_var} vs {y_var}")
-        st.pyplot(fig)
+        color_enc = alt.Color(hue_var) if hue_var != "Ninguno" else alt.value("#2ca02c")
+        chart = alt.Chart(df_f).mark_circle(size=70, opacity=0.6).encode(
+            x=alt.X(x_var, title=x_var),
+            y=alt.Y(y_var, title=y_var),
+            color=color_enc,
+            tooltip=num_vars + cat_vars
+        ).properties(height=350).configure_axis(
+            labelColor="lightgray",
+            titleColor="white"
+        ).interactive()
+        st.altair_chart(chart, use_container_width=True)
 
 # ---- Tab 2: Comparativo (countplots clave)
 with tab2:
-    st.subheader("Churn por Contrato")
-    if "Contract" in df_f.columns and "Churn" in df_f.columns:
-        fig, ax = plt.subplots(figsize=(8, 5))
-        sns.countplot(data=df_f, x="Contract", hue="Churn", ax=ax)
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha="right")
-        st.pyplot(fig)
-
-    st.subheader("Churn por InternetService")
-    if "InternetService" in df_f.columns and "Churn" in df_f.columns:
-        fig, ax = plt.subplots(figsize=(8, 5))
-        sns.countplot(data=df_f, x="InternetService", hue="Churn", ax=ax)
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha="right")
-        st.pyplot(fig)
-
-    st.subheader("Churn por PaymentMethod")
-    if "PaymentMethod" in df_f.columns and "Churn" in df_f.columns:
-        fig, ax = plt.subplots(figsize=(9, 5))
-        sns.countplot(data=df_f, x="PaymentMethod", hue="Churn", ax=ax)
-        ax.set_xticklabels(ax.get_xticklabels(), rotation=30, ha="right")
-        st.pyplot(fig)
+    st.subheader("Churn por categoría")
+    comp_vars = ["Contract", "InternetService", "PaymentMethod"]
+    for i in range(0, len(comp_vars), 2):
+        cols = st.columns(2)
+        for j, var in enumerate(comp_vars[i:i+2]):
+            if var in df_f.columns and "Churn" in df_f.columns:
+                with cols[j]:
+                    chart = alt.Chart(df_f).mark_bar(opacity=0.85).encode(
+                        x=alt.X(var, title=var),
+                        y='count()',
+                        color=alt.Color('Churn:N', scale=alt.Scale(scheme="dark2")),
+                        tooltip=[var, 'Churn']
+                    ).properties(height=300).configure_axis(
+                        labelColor="lightgray",
+                        titleColor="white"
+                    ).interactive()
+                    st.altair_chart(chart, use_container_width=True)
 
 # ---- Tab 3: Segmentación (heatmap + KPIs por segmento)
 with tab3:
     st.subheader("Correlación (solo numéricas)")
     if len(num_vars) >= 2:
-        fig, ax = plt.subplots(figsize=(7, 5))
-        sns.heatmap(df_f[num_vars].corr(), annot=True, cmap="coolwarm", ax=ax, fmt=".2f")
-        st.pyplot(fig)
+        corr = df_f[num_vars].corr().reset_index().melt("index")
+        corr_chart = alt.Chart(corr).mark_rect().encode(
+            x=alt.X('index:N', title=''),
+            y=alt.Y('variable:N', title=''),
+            color=alt.Color('value:Q', scale=alt.Scale(scheme="redblue", domain=(-1, 1))),
+            tooltip=['index', 'variable', alt.Tooltip('value:Q', format=".2f")]
+        ).properties(height=400).configure_axis(
+            labelColor="white",
+            titleColor="white"
+        )
+        st.altair_chart(corr_chart, use_container_width=True)
 
     st.subheader("KPIs por segmento")
     seg_opts = [c for c in cat_vars if c in df_f.columns]
@@ -189,10 +213,7 @@ with tab4:
     # Mayor churn por tipo de contrato
     if "Contract" in df_f.columns and "Churn" in df_f.columns and df_f["Contract"].nunique() > 0:
         gr = df_f.groupby("Contract")["Churn"].mean().sort_values(ascending=False) * 100
-        top_c = gr.index[0]
-        bullets.append(f"• El mayor churn se observa en **{top_c}** ({gr.iloc[0]:.2f}%).")
-
-    # Mayor churn por InternetService
+        bullets.append(f"• El mayor churn se observa en **{gr.index[0]}** ({gr.iloc[0]:.2f}%).")
     if "InternetService" in df_f.columns and df_f["InternetService"].nunique() > 0:
         gr = df_f.groupby("InternetService")["Churn"].mean().sort_values(ascending=False) * 100
         bullets.append(f"• Por servicio de Internet, destaca **{gr.index[0]}** con churn de {gr.iloc[0]:.2f}%.")
