@@ -1,2 +1,10 @@
-Mid_Machine/Streamlit/__pycache__
-Mid_Machine/Streamlit/__pycache__/Transformers.cpython-39.pyc
+# Python cache
+__pycache__/
+
+# Jupyter auto copies
+*.ipynb_checkpoints/
+*copy*.ipynb
+
+# CatBoost temporary output
+Mid_Machine/pipeline/catboost_info/
+Mid_Machine/pipeline/tmp/
